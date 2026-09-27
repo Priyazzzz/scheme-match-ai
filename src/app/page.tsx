@@ -436,18 +436,17 @@ const handleAuthSubmit = (e: React.FormEvent) => {
             {/* Consolidated Registration Form */}
             <ConsolidatedRegistrationForm
               initialProfile={userProfile as any}
-               onSubmit={(submittedData:any) => {
+              onSubmit={(submittedData: any) => {
                 console.log("Parent received submitted profile:", submittedData);
                 setUserProfile(submittedData);
                 setIsSubmitted(true);
-                // Reset category filter on submission so citizen sees all eligible matches
                 setSelectedCategory("All");
 
-                setTimeout(() => {
-                  document.getElementById("scheme-results-view")?.scrollIntoView({ behavior: "smooth" });
-                }, 200);
-              }}
-            />
+    setTimeout(() => {
+      document.getElementById("scheme-results-view")?.scrollIntoView({ behavior: "smooth" });
+    }, 200);
+  }}
+/>
 
             {/* Evaluated Scheme Results */}
             {displayedSchemes.length > 0 && (

@@ -661,6 +661,15 @@ export default function ConsolidatedRegistrationForm({
               </div>
             </div>
           </div>
+          {/* SUBMIT BUTTON */}
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            type="submit"
+            className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-pink-600 to-indigo-600 hover:from-pink-700 hover:to-indigo-700 text-white font-bold text-sm shadow-lg hover:shadow-indigo-500/25 transition active:scale-[0.98]"
+          >
+            Save Profile & Audit Eligible Schemes →
+          </button>
         </div>
       </form>
  </div>
