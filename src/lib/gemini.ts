@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const apiKey = process.env.GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -29,77 +29,65 @@ export interface ExtractedDocumentData {
 
 export async function analyzeUploadedDocument(
   base64Image: string,
-  mimeType: string
+  mimeType: string,
+  fileName?: string
 ): Promise<ExtractedDocumentData> {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: SchemaType.OBJECT,
-        properties: {
-          documentType: {
-            type: SchemaType.STRING,
-            description:
-              "One of: doc_aadhaar, doc_pan, doc_income_cert, doc_caste_cert, doc_land_record, doc_bank_passbook, doc_fee_receipt, doc_ration_card, doc_mcp_card, unknown",
-          },
-          documentName: {
-            type: SchemaType.STRING,
-            description: "Human readable title, e.g. 'Aadhaar Card'",
-          },
-          extractedDetails: {
-            type: SchemaType.OBJECT,
-            properties: {
-              name: { type: SchemaType.STRING },
-              dob: { type: SchemaType.STRING },
-              age: { type: SchemaType.NUMBER },
-              gender: { type: SchemaType.STRING },
-              caste_category: { type: SchemaType.STRING },
-              annual_income: { type: SchemaType.NUMBER },
-            },
-          },
-          confidence: {
-            type: SchemaType.NUMBER,
-            description: "Score from 0.0 to 1.0",
-          },
-        },
-        required: ["documentType", "documentName", "confidence"],
-      },
-      temperature: 0.1,
-    },
-  });
-
-  const prompt = `
-Analyze this Indian government welfare or identity document.
-Determine its exact type:
-- doc_aadhaar (Aadhaar Card)
-- doc_pan (PAN Card)
-- doc_income_cert (Income Certificate)
-- doc_caste_cert (Caste/Category Certificate)
-- doc_land_record (Land Record, Khatauni, RoR)
-- doc_bank_passbook (Bank Passbook)
-- doc_fee_receipt (College/School Fee Receipt)
-- doc_ration_card (Ration Card)
-- doc_mcp_card (Mother Child Protection Card)
-- unknown (If none of the above)
-
-Extract verifiable demographic details if present.
-`;
-
-  const result = await model.generateContent([
-    prompt,
-    {
-      inlineData: {
-        data: base64Image,
-        mimeType: mimeType,
-      },
-    },
-  ]);
-
-  const text = result.response.text();
-  if (!text) {
-    throw new Error("No response received from Gemini model.");
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is missing in .env.local file.");
   }
 
-  return JSON.parse(text) as ExtractedDocumentData;
+  // Google API recommended active model
+  const candidateModels = ["gemini-3.8-flash", "gemini-2.5-flash"];
+
+  const prompt = `
+You are a precision OCR engine for Indian Identity Documents.
+Read the actual text printed on this document image.
+
+Extract:
+1. "name": The exact citizen full name printed on the card.
+2. "dob": Date of birth in YYYY-MM-DD format (if only year is printed, use YYYY-01-01).
+3. "age": Citizen age as a number (2026 - birth year).
+4. "gender": "Male", "Female", or "Other".
+5. "documentType": "doc_aadhaar" for Aadhaar/UIDAI, "doc_pan" for PAN, "doc_income_cert" for Income, "doc_caste_cert" for Caste.
+6. "documentName": Name of the document (e.g. "Aadhaar Card").
+
+Respond ONLY with valid JSON. Do not include markdown backticks or extra text:
+{"documentType":"doc_aadhaar","documentName":"Aadhaar Card","extractedDetails":{"name":"PRINTED_NAME","dob":"YYYY-MM-DD","age":20,"gender":"Female","caste_category":null,"annual_income":null},"confidence":0.95}
+`;
+
+  let lastError: any = null;
+
+  for (const modelName of candidateModels) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: base64Image,
+            mimeType: mimeType || "image/jpeg",
+          },
+        },
+      ]);
+
+      let text = result.response.text();
+      if (!text) continue;
+
+      const firstBrace = text.indexOf("{");
+      const lastBrace = text.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        text = text.substring(firstBrace, lastBrace + 1);
+      }
+
+      const parsed = JSON.parse(text);
+      if (parsed && parsed.extractedDetails) {
+        return parsed as ExtractedDocumentData;
+      }
+    } catch (err: any) {
+      console.warn(`Model ${modelName} attempt error:`, err?.message || err);
+      lastError = err;
+    }
+  }
+
+  throw new Error(lastError?.message || "Failed to parse document text with Gemini Vision AI");
 }

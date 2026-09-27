@@ -14,14 +14,15 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes);
     const base64Image = buffer.toString("base64");
     const mimeType = file.type || "image/jpeg";
+    const fileName = file.name || "document.jpg";
 
-    const extracted = await analyzeUploadedDocument(base64Image, mimeType);
+    const extracted = await analyzeUploadedDocument(base64Image, mimeType, fileName);
 
     return NextResponse.json({ success: true, data: extracted });
   } catch (error: any) {
-    console.error("Document analysis error:", error);
+    console.error("API Route Error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to analyze document" },
+      { error: error?.message || "AI scanning failed." },
       { status: 500 }
     );
   }
