@@ -1,133 +1,122 @@
-import { Scheme, UserProfile, SchemeMatchResult, SchemeDocument } from "../types/scheme";
-import { SCHEMES_DATABASE } from "../data/schemesDatabase";
+import { UserProfile, Scheme, EvaluationResult } from "@/types/scheme";
 
-/**
- * Evaluates a single scheme against a user profile
- */
-export function evaluateSchemeForUser(user: UserProfile, scheme: Scheme): SchemeMatchResult {
-  const rules = scheme.eligibility_rules;
-  const ineligibilityReasons: string[] = [];
+export function evaluateSchemeEligibility(
+  profile: UserProfile,
+  scheme: Scheme
+): EvaluationResult {
+  const criteria = scheme.criteria;
+  const failureReasons: string[] = [];
+  const satisfiedReasons: string[] = [];
 
   // 1. Age Verification
-  if (user.age !== null && user.age !== undefined) {
-    if (user.age < rules.min_age || user.age > rules.max_age) {
-      ineligibilityReasons.push(
-        `Age requirement not met (Eligible: ${rules.min_age}–${rules.max_age} years, Provided: ${user.age}).`
-      );
-    }
-  }
-
-  // 2. Annual Income Ceiling
-  if (rules.max_annual_income !== null && user.annual_income !== null) {
-    if (user.annual_income > rules.max_annual_income) {
-      const difference = user.annual_income - rules.max_annual_income;
-      ineligibilityReasons.push(
-        `Annual income exceeds the ₹${rules.max_annual_income.toLocaleString("en-IN")} ceiling by ₹${difference.toLocaleString("en-IN")}.`
-      );
-    }
-  }
-
-  // 3. Gender Verification
-  if (user.gender && !rules.gender.includes("All")) {
-    if (!rules.gender.includes(user.gender)) {
-      ineligibilityReasons.push(
-        `Scheme is restricted to: ${rules.gender.join(", ")} applicants.`
-      );
-    }
-  }
-
-  // 4. Caste Category
-  if (user.caste_category && !rules.caste_category.includes("All")) {
-    if (!rules.caste_category.includes(user.caste_category)) {
-      ineligibilityReasons.push(
-        `Scheme is designated for ${rules.caste_category.join(", ")} categories.`
-      );
-    }
-  }
-
-  // 5. Occupation Verification
-  if (user.occupation && !rules.occupations.includes("All")) {
-    if (!rules.occupations.includes(user.occupation)) {
-      ineligibilityReasons.push(
-        `Applicable for occupations: ${rules.occupations.join(", ")}.`
-      );
-    }
-  }
-
-  // 6. Student Status
-  if (rules.is_student !== undefined) {
-    if (user.is_student !== rules.is_student) {
-      ineligibilityReasons.push(
-        rules.is_student ? "Requires active enrollment as a student." : "Not applicable to enrolled students."
-      );
-    }
-  }
-
-  // 7. Landholding Requirement
-  if (rules.requires_landholding && !user.owns_agricultural_land) {
-    ineligibilityReasons.push("Requires cultivable agricultural land title.");
-  }
-
-  // Determine Eligibility Verdict
-  const isEligible = ineligibilityReasons.length === 0;
-
-  // --- Document Verification & Readiness Calculation ---
-  const userDocsSet = new Set(user.uploaded_documents || []);
-  const submittedDocs: SchemeDocument[] = [];
-  const missingDocs: SchemeDocument[] = [];
-
-  scheme.required_documents.forEach((doc) => {
-    if (userDocsSet.has(doc.id)) {
-      submittedDocs.push(doc);
+  if (profile.age !== null && profile.age !== undefined) {
+    if (criteria.minAge !== undefined && profile.age < criteria.minAge) {
+      failureReasons.push(`Age (${profile.age}) is below minimum requirement (${criteria.minAge} years).`);
+    } else if (criteria.maxAge !== undefined && profile.age > criteria.maxAge) {
+      failureReasons.push(`Age (${profile.age}) exceeds statutory limit (${criteria.maxAge} years).`);
     } else {
-      missingDocs.push(doc);
+      satisfiedReasons.push(`Age criterion verified (${profile.age} years).`);
     }
-  });
+  }
 
-  const totalRequired = scheme.required_documents.length;
-  const matchPercentage =
-    totalRequired > 0 ? Math.round((submittedDocs.length / totalRequired) * 100) : 100;
+  // 2. Gender Verification
+  if (criteria.allowedGenders && criteria.allowedGenders.length > 0) {
+    if (profile.gender && !criteria.allowedGenders.includes(profile.gender)) {
+      failureReasons.push(`Restricted to ${criteria.allowedGenders.join(", ")} applicants.`);
+    } else if (profile.gender) {
+      satisfiedReasons.push(`Gender requirement satisfied (${profile.gender}).`);
+    }
+  }
 
-  // Generate plain-language explainability rationale
-  let explanation = "";
+  // 3. Social Category / Caste
+  if (criteria.allowedCategories && criteria.allowedCategories.length > 0) {
+    if (!criteria.allowedCategories.includes(profile.caste_category)) {
+      failureReasons.push(`Restricted to ${criteria.allowedCategories.join(", ")} categories.`);
+    } else {
+      satisfiedReasons.push(`Social category eligible (${profile.caste_category}).`);
+    }
+  }
+
+  // 4. Annual Income Verification
+  if (profile.annual_income !== null && profile.annual_income !== undefined) {
+    if (criteria.maxAnnualIncome !== undefined && profile.annual_income > criteria.maxAnnualIncome) {
+      failureReasons.push(`Family annual income (₹${profile.annual_income.toLocaleString("en-IN")}) exceeds ceiling of ₹${criteria.maxAnnualIncome.toLocaleString("en-IN")}.`);
+    } else {
+      satisfiedReasons.push(`Income under allowable limit.`);
+    }
+  }
+
+  // 5. BPL Card Check
+  if (criteria.requiresBplCard && !profile.bpl_card_holder) {
+    failureReasons.push("Requires an active BPL or Antyodaya Ration Card.");
+  }
+
+  // 6. Student Status Check
+  if (criteria.requiresStudent && !profile.is_student) {
+    failureReasons.push("Must be an enrolled full-time student.");
+  }
+
+  // 7. Land Ownership Check
+  if (criteria.requiresAgriculturalLand && !profile.owns_agricultural_land) {
+    failureReasons.push("Applicant must own registered agricultural land holdings.");
+  }
+
+  if (criteria.maxLandAcres !== undefined && profile.land_area_acres > criteria.maxLandAcres) {
+    failureReasons.push(`Agricultural land area (${profile.land_area_acres} acres) exceeds upper threshold of ${criteria.maxLandAcres} acres.`);
+  }
+
+  // 8. Location / State
+  if (criteria.allowedStates && criteria.allowedStates.length > 0) {
+    if (profile.state && !criteria.allowedStates.includes(profile.state)) {
+      failureReasons.push(`Restricted to residents of ${criteria.allowedStates.join(", ")}.`);
+    }
+  }
+
+  const isEligible = failureReasons.length === 0;
+
+  // Document Readiness & Gap Analysis
+  const requiredDocs = scheme.requiredDocuments || [];
+  const uploaded = profile.uploaded_documents || [];
+
+  const readyDocuments = requiredDocs.filter((doc) =>
+    uploaded.some((u) => u.toLowerCase().includes(doc.name.toLowerCase()) || doc.name.toLowerCase().includes(u.toLowerCase()))
+  );
+
+  const missingDocuments = requiredDocs.filter(
+    (doc) => !readyDocuments.some((r) => r.id === doc.id)
+  );
+
+  const readinessScore =
+    requiredDocs.length > 0
+      ? Math.round((readyDocuments.length / requiredDocs.length) * 100)
+      : 100;
+
+  // Synthesized AI Rationale
+  let rationale = "";
   if (isEligible) {
-    if (matchPercentage === 100) {
-      explanation = `Fully eligible and all ${totalRequired} mandatory documents are verified. You are ready to submit.`;
-    } else {
-      explanation = `Demographically eligible! However, you need ${missingDocs.length} more document(s) to reach 100% readiness.`;
-    }
+    rationale = `Eligible citizen profile. ${satisfiedReasons.slice(0, 3).join(" ")}`;
   } else {
-    explanation = `Currently ineligible: ${ineligibilityReasons.join(" ")}`;
+    rationale = `Ineligible due to: ${failureReasons.join(" ")}`;
   }
 
   return {
-    schemeId: scheme.scheme_id,
-    schemeName: scheme.scheme_name,
+    schemeId: scheme.id,
+    schemeName: scheme.name,
     category: scheme.category,
-    shortSummary: scheme.short_summary,
-    benefits: scheme.benefits,
+    shortSummary: scheme.shortSummary,
+    officialPortalUrl: scheme.officialPortalUrl,
     isEligible,
-    ineligibilityReasons,
-    documentMatchPercentage: matchPercentage,
-    submittedDocs,
-    missingDocs,
-    explanation,
+    matchingScore: isEligible ? (readinessScore > 70 ? 95 : 80) : 20,
+    rationale,
+    readinessScore,
+    readyDocuments,
+    missingDocuments,
   };
 }
 
-/**
- * Runs evaluation across all available schemes in the database
- */
 export function runSchemeMatching(
-  user: UserProfile,
-  customSchemes: Scheme[] = SCHEMES_DATABASE
-): SchemeMatchResult[] {
-  const results = customSchemes.map((scheme) => evaluateSchemeForUser(user, scheme));
-
-  // Sort: Eligible first, then descending by document match %
-  return results.sort((a, b) => {
-    if (a.isEligible && !b.isEligible) return -1;
-    if (!a.isEligible && b.isEligible) return 1;
-    return b.documentMatchPercentage - a.documentMatchPercentage;
-  });
+  profile: UserProfile,
+  schemes: Scheme[]
+): EvaluationResult[] {
+  return schemes.map((s) => evaluateSchemeEligibility(profile, s));
 }

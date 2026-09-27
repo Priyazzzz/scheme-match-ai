@@ -19,45 +19,50 @@ export type SchemeCategory =
   | "Youth & Defense Welfare";
 
 export interface UserProfile {
-  // Identity & KYC
   name: string;
-  aadhaar_number: string;
-  pan_number: string;
-  is_identity_verified: boolean;
-
-  // Demographics
-  dob: string;
+  aadhaar_number?: string;
+  pan_number?: string;
+  is_identity_verified?: boolean;
+  dob?: string;
   age: number | null;
-  gender: "Male" | "Female" | "Other" | "";
-  marital_status: "Single" | "Married" | "Widowed" | "Divorced";
-  caste_category: "General" | "OBC" | "SC" | "ST" | "EWS";
-
-  // Socio-Economic & Family
+  gender: string;
+  marital_status: string;
+  caste_category: string;
   annual_income: number | null;
   family_member_count: number;
   bpl_card_holder: boolean;
-
-  // Education & Occupation
-  education_level: "Below 10th" | "10th Pass" | "12th Pass" | "Graduate" | "Post-Graduate";
+  education_level: string;
   is_student: boolean;
-  occupation: "Farmer" | "Student" | "Self Employed" | "Unemployed" | "Salaried";
-
-  // Property & Assets
+  occupation: string;
   owns_agricultural_land: boolean;
   land_area_acres: number;
-  house_type: "Kutcha" | "Semi-Pucca" | "Pucca" | "Homeless";
-
-  // Location & Existing Benefits
+  house_type: string;
   state: string;
   pincode: string;
   existing_benefits: string[];
   uploaded_documents: string[];
 }
 
-export interface SchemeDocumentRequirement {
+export interface SchemeDocument {
   id: string;
   name: string;
-  resolution_guide: string;
+  mandatory: boolean;
+  issuingAuthority?: string;
+  resolutionGuide?: string;
+}
+
+export interface EligibilityCriteria {
+  minAge?: number;
+  maxAge?: number;
+  allowedGenders?: string[];
+  allowedCategories?: string[];
+  maxAnnualIncome?: number;
+  requiresBplCard?: boolean;
+  requiresStudent?: boolean;
+  requiresAgriculturalLand?: boolean;
+  maxLandAcres?: number;
+  allowedStates?: string[];
+  requiredOccupations?: string[];
 }
 
 export interface Scheme {
@@ -65,28 +70,22 @@ export interface Scheme {
   name: string;
   category: SchemeCategory;
   shortSummary: string;
-  benefits: string;
-  minAge?: number;
-  maxAge?: number;
-  gender?: "Male" | "Female" | "All";
-  maxIncome?: number;
-  casteEligible?: Array<"General" | "OBC" | "SC" | "ST" | "EWS">;
-  allowedOccupations?: string[];
-  requiresStudent?: boolean;
-  requiresLand?: boolean;
-  requiredDocuments: SchemeDocumentRequirement[];
+  description?: string;
+  officialPortalUrl: string;
+  criteria: EligibilityCriteria;
+  requiredDocuments: SchemeDocument[];
 }
 
-export interface SchemeMatchResult {
+export interface EvaluationResult {
   schemeId: string;
   schemeName: string;
   category: SchemeCategory;
   shortSummary: string;
-  benefits: string;
+  officialPortalUrl: string;
   isEligible: boolean;
-  ineligibilityReasons: string[];
-  documentMatchPercentage: number;
-  submittedDocs: SchemeDocumentRequirement[];
-  missingDocs: SchemeDocumentRequirement[];
-  explanation: string;
+  matchingScore: number;
+  rationale: string;
+  readinessScore: number;
+  readyDocuments: SchemeDocument[];
+  missingDocuments: SchemeDocument[];
 }
