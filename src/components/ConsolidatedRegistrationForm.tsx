@@ -96,14 +96,15 @@ export default function ConsolidatedRegistrationForm({
     }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFormSubmit = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
+    console.log("Submitting profile to parent:", profile);
     onSubmitProfile(profile);
   };
 
   return (
     <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-10 shadow-xl shadow-slate-200/50 mb-12 text-slate-800">
-      {/* Top AI Scan Banner (Light Purple/Pink Gradient) */}
+      {/* Top AI Scan Banner */}
       <div className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-pink-50 via-purple-50 to-indigo-50 border border-purple-100">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="max-w-xl">
@@ -165,7 +166,7 @@ export default function ConsolidatedRegistrationForm({
         )}
       </div>
 
-      {/* Form Fields in Clean Light Theme */}
+      {/* Form Fields */}
       <form onSubmit={handleFormSubmit} className="space-y-8">
         {/* Section 1: Demographics */}
         <div>
@@ -186,7 +187,6 @@ export default function ConsolidatedRegistrationForm({
               <label className="block text-slate-700 font-semibold mb-1">Full Name</label>
               <input
                 type="text"
-                required
                 placeholder="Citizen Full Name"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition"
                 value={profile.name}
@@ -221,7 +221,7 @@ export default function ConsolidatedRegistrationForm({
               <label className="block text-slate-700 font-semibold mb-1">Date of Birth</label>
               <input
                 type="date"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:outline-none focus:border-pink-500 transition"
                 value={profile.dob}
                 onChange={(e) => handleFieldChange("dob", e.target.value)}
               />
@@ -232,7 +232,7 @@ export default function ConsolidatedRegistrationForm({
               <input
                 type="number"
                 placeholder="e.g. 21"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-slate-900 focus:bg-white focus:outline-none focus:border-pink-500 transition"
                 value={profile.age ?? ""}
                 onChange={(e) => handleFieldChange("age", e.target.value ? Number(e.target.value) : null)}
               />
@@ -456,8 +456,14 @@ export default function ConsolidatedRegistrationForm({
           </p>
 
           <button
-            type="submit"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 via-pink-500 to-indigo-600 hover:opacity-95 text-white text-xs font-bold px-8 py-3.5 rounded-full shadow-lg shadow-pink-500/25 transition active:scale-95 cursor-pointer"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              alert("Button clicked successfully!");
+              onSubmitProfile(profile);
+            }}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 via-pink-500 to-indigo-600 hover:opacity-95 text-white text-xs font-bold px-8 py-3.5 rounded-full shadow-lg shadow-pink-500/25 transition active:scale-95 cursor-pointer z-50 relative"
           >
             <span>Register & Audit My Benefits →</span>
           </button>

@@ -50,7 +50,6 @@ const ALL_18_CATEGORIES: { name: SchemeCategory; desc: string }[] = [
   { name: "Youth & Defense Welfare", desc: "Agniveer rehabilitation, defense family pensions" },
 ];
 
-// Initial blank profile with zero synthetic data
 const EMPTY_CITIZEN_PROFILE: UserProfile = {
   name: "",
   aadhaar_number: "",
@@ -73,7 +72,7 @@ const EMPTY_CITIZEN_PROFILE: UserProfile = {
   state: "",
   pincode: "",
   existing_benefits: [],
-  uploaded_documents: [], // Empty initially until citizen uploads
+  uploaded_documents: [],
 };
 
 export default function Home() {
@@ -90,7 +89,6 @@ export default function Home() {
   const [userProfile, setUserProfile] = useState<UserProfile>(EMPTY_CITIZEN_PROFILE);
 
   const schemeResults = useMemo(() => {
-    // Only evaluate schemes once citizen fills in basic details or registers
     if (!isSubmitted && !userProfile.name && userProfile.uploaded_documents.length === 0) {
       return [];
     }
@@ -110,6 +108,9 @@ export default function Home() {
 
   const eligibleCount = schemeResults.filter((s) => s.isEligible).length;
 
+  // Schemes to display: filtered by category/search if available, otherwise all evaluated results
+  const displayedSchemes = filteredSchemes.length > 0 ? filteredSchemes : schemeResults;
+
   const filteredCategories = useMemo(() => {
     return ALL_18_CATEGORIES.filter((c) =>
       c.name.toLowerCase().includes(categorySearch.toLowerCase()) ||
@@ -122,11 +123,6 @@ export default function Home() {
     setIsLoggedIn(true);
     setIsAuthModalOpen(false);
     setCurrentView("workspace");
-  };
-
-  const handleProfileSubmission = (submittedProfile: UserProfile) => {
-    setUserProfile(submittedProfile);
-    setIsSubmitted(true);
   };
 
   return (
@@ -148,10 +144,7 @@ export default function Home() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-black tracking-tight text-white">
-                Sevasetu
-                </span>
-                <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/10 text-pink-300 border border-white/15">
-                  
+                  Sevasetu
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
@@ -168,12 +161,6 @@ export default function Home() {
                   className="hidden md:inline-flex text-xs font-semibold text-slate-300 hover:text-white transition"
                 >
                   Explore 18 Sectors
-                </a>
-                <a
-                  href="#workflow"
-                  className="hidden md:inline-flex text-xs font-semibold text-slate-300 hover:text-white transition"
-                >
-                  Simple Process
                 </a>
 
                 {isLoggedIn ? (
@@ -237,11 +224,8 @@ export default function Home() {
       {/* VIEW 1: LANDING PAGE */}
       {currentView === "landing" && (
         <main>
-          {/* Hero Section */}
-          {/* BANNER PHOTO */}
-        
-          {/* CITIZEN BANNER PHOTO (LANDING PAGE) */}
-          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-20">
+          {/* Hero Banner */}
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-20 pt-8">
             <div className="relative rounded-3xl overflow-hidden border border-white/15 shadow-2xl group">
               <img
                 src="/welfare-banner.png"
@@ -259,7 +243,9 @@ export default function Home() {
               </div>
             </div>
           </section>
-          <section className="relative pt-12 pb-24 lg:pt-20 lg:pb-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          {/* Hero Info */}
+          <section className="relative pt-4 pb-24 lg:pt-8 lg:pb-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
               <div className="lg:col-span-7 space-y-6">
                 <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-pink-300">
@@ -330,10 +316,8 @@ export default function Home() {
               </div>
             </div>
           </section>
-          
-         
-          {/* 18 Categories */}
 
+          {/* 18 Categories Section */}
           <section id="categories" className="py-20 bg-[#0B1033] border-y border-white/10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center max-w-2xl mx-auto mb-12">
@@ -393,12 +377,10 @@ export default function Home() {
       )}
 
       {/* VIEW 2: CITIZEN WORKSPACE */}
-      {/* VIEW 2: CITIZEN WORKSPACE (LIGHT THEME) */}
       {currentView === "workspace" && (
-        <main className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-16">
+        <main className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-24">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-            
-            {/* SevaSetu Banner - Perfectly Scaled & Framed */}
+            {/* SevaSetu Banner */}
             <div className="relative rounded-3xl overflow-hidden border border-slate-200/80 shadow-md mb-8 bg-white">
               <img
                 src="/SevaSetu.png"
@@ -407,7 +389,7 @@ export default function Home() {
               />
             </div>
 
-            {/* Quick Metrics Bar (Light Mode) */}
+            {/* Quick Metrics Bar */}
             <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
               <div>
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
@@ -437,11 +419,43 @@ export default function Home() {
             {/* Consolidated Registration Form */}
             <ConsolidatedRegistrationForm
               initialProfile={userProfile}
-              onSubmitProfile={handleProfileSubmission}
+              onSubmitProfile={(submittedData) => {
+                console.log("Parent received submitted profile:", submittedData);
+                setUserProfile(submittedData);
+                setIsSubmitted(true);
+                // Reset category filter on submission so citizen sees all eligible matches
+                setSelectedCategory("All");
+
+                setTimeout(() => {
+                  document.getElementById("scheme-results-view")?.scrollIntoView({ behavior: "smooth" });
+                }, 200);
+              }}
             />
 
             {/* Evaluated Scheme Results */}
-            {/* ... baaki scheme results ka code waise hi rahega ... */}
+            {displayedSchemes.length > 0 && (
+              <section id="scheme-results-view" className="mt-12 pt-8 border-t border-slate-200 scroll-mt-24">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                      Recommended Schemes & Audit Results
+                    </h3>
+                    <p className="text-sm text-slate-600 mt-1">
+                      Showing matching schemes tailored to your verified profile ({displayedSchemes.length} schemes evaluated).
+                    </p>
+                  </div>
+                  <div className="px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800">
+                    {displayedSchemes.filter((s: any) => s.isEligible).length} Eligible Schemes Qualified
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {displayedSchemes.map((scheme: any) => (
+                    <SchemeCard key={scheme.schemeId} result={scheme} />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         </main>
       )}
