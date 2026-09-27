@@ -118,11 +118,28 @@ export default function Home() {
     );
   }, [categorySearch]);
 
-  const handleAuthSubmit = (e: React.FormEvent) => {
+const handleAuthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggedIn(true);
     setIsAuthModalOpen(false);
     setCurrentView("workspace");
+
+    if (authMode === "login") {
+      // Existing citizen logs in:
+      // If no name is set yet, populate a default returning citizen state
+      if (!userProfile.name) {
+        setUserProfile((prev) => ({
+          ...prev,
+          name: prev.name || "Verified Citizen",
+        }));
+      }
+      setIsSubmitted(true);
+      setSelectedCategory("All");
+    } else {
+      // New citizen registering:
+      // Keep form clean and unsubmitted so they can enter their complete profile
+      setIsSubmitted(false);
+    }
   };
 
   return (
@@ -418,8 +435,8 @@ export default function Home() {
 
             {/* Consolidated Registration Form */}
             <ConsolidatedRegistrationForm
-              initialProfile={userProfile}
-              onSubmitProfile={(submittedData) => {
+              initialProfile={userProfile as any}
+               onSubmit={(submittedData:any) => {
                 console.log("Parent received submitted profile:", submittedData);
                 setUserProfile(submittedData);
                 setIsSubmitted(true);
@@ -470,19 +487,42 @@ export default function Home() {
             >
               ✕
             </button>
-
+            {/* Modal Header & Auth Mode Toggle */}
             <div className="mb-6">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 to-indigo-600 flex items-center justify-center text-white mb-3">
-                <Lock className="w-5 h-5 text-white" />
+              <div className="flex border-b border-white/10 mb-4 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setAuthMode("login")}
+                  className={`w-1/2 pb-2.5 transition ${
+                    authMode === "login"
+                      ? "text-pink-400 border-b-2 border-pink-500 font-bold"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Sign In (Existing Citizen)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode("register")}
+                  className={`w-1/2 pb-2.5 transition ${
+                    authMode === "register"
+                      ? "text-pink-400 border-b-2 border-pink-500 font-bold"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  New Registration
+                </button>
               </div>
+
               <h3 className="text-xl font-bold text-white">
-                {authMode === "login" ? "Citizen Authentication" : "Register Citizen Profile"}
+                {authMode === "login" ? "Welcome Back" : "Create Citizen Account"}
               </h3>
               <p className="text-xs text-slate-400 mt-1">
-                Enter your details to open your personal welfare audit workspace.
+                {authMode === "login"
+                  ? "Sign in to access your pre-audited schemes and benefit vault."
+                  : "Register your basic profile to start your live welfare entitlement audit."}
               </p>
             </div>
-
             <form onSubmit={handleAuthSubmit} className="space-y-4 text-xs">
               <div>
                 <label className="block font-medium text-slate-300 mb-1">

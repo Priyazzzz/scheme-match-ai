@@ -37,7 +37,12 @@ export async function analyzeUploadedDocument(
   }
 
   // Google API recommended active model
-  const candidateModels = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+  const candidateModels = [
+  
+  "gemini-1.5-flash",
+  "gemini-1.5-pro"
+
+];
 
   const prompt = `You are a precision OCR engine for Indian Identity Documents.
 Read the actual text printed on this document image.
